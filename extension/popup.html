@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing ONE</title>
+    <link rel="stylesheet" href="popup.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span class="shield-icon">🛡️</span>
+                <h1>Phishing <span class="accent">ONE</span></h1>
+            </div>
+        </header>
+        
+        <main>
+            <div id="status-card" class="status-card loading">
+                <div class="status-icon">
+                    <div class="spinner"></div>
+                </div>
+                <div class="status-info">
+                    <h2 id="status-text">Analyzing...</h2>
+                    <p id="url-text" class="truncate">Fetching current tab...</p>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Risk Level</span>
+                    <span id="risk-level" class="stat-value">--</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Score</span>
+                    <span id="risk-score" class="stat-value">0</span>
+                </div>
+            </div>
+
+            <div id="reasons-list" class="reasons-container hidden">
+                <h3>Detection Details</h3>
+                <ul id="reasons-ul">
+                    <!-- Reasons will be injected here -->
+                </ul>
+            </div>
+        </main>
+
+        <footer>
+            <p>Real-time AI Shield Active</p>
+            <div class="toggle-container">
+                <small>Protection</small>
+                <label class="switch">
+                    <input type="checkbox" checked disabled>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </footer>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>

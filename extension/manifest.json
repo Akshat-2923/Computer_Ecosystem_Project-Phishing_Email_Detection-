@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Phishing ONE",
+  "version": "1.0",
+  "description": "Real-time phishing detection for safer browsing.",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "http://localhost/api/check_url"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
