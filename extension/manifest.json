@@ -12,7 +12,7 @@
   "host_permissions": [
     "http://*/*",
     "https://*/*",
-    "http://localhost/api/check_url"
+    "http://localhost:5000/*"
   ],
   "action": {
     "default_popup": "popup.html"

@@ -1,7 +1,7 @@
 
 // background.js for Phishing ONE
 
-const API_ENDPOINT = "https://pulsatile-unmimeographed-deandrea.ngrok-free.dev/api/check_url";
+const API_ENDPOINT = "http://localhost:5000/api/check_url";
 
 // Listen for tab updates
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {

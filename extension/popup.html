@@ -15,8 +15,15 @@
                 <h1>Phishing <span class="accent">ONE</span></h1>
             </div>
         </header>
-        
-        <main>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-url">URL Check</button>
+            <button class="tab-btn" id="tab-email">Email Check</button>
+        </div>
+
+        <!-- URL Tab -->
+        <main id="panel-url">
             <div id="status-card" class="status-card loading">
                 <div class="status-icon">
                     <div class="spinner"></div>
@@ -40,9 +47,30 @@
 
             <div id="reasons-list" class="reasons-container hidden">
                 <h3>Detection Details</h3>
-                <ul id="reasons-ul">
-                    <!-- Reasons will be injected here -->
-                </ul>
+                <ul id="reasons-ul"></ul>
+            </div>
+        </main>
+
+        <!-- Email Tab -->
+        <main id="panel-email" class="hidden">
+            <div class="email-input-area">
+                <textarea id="email-input" placeholder="Paste email or SMS text here to scan for phishing..."></textarea>
+                <button id="scan-btn">🔍 Scan</button>
+            </div>
+
+            <div id="email-status-card" class="status-card hidden">
+                <div class="status-icon">
+                    <span id="email-status-icon">🛡️</span>
+                </div>
+                <div class="status-info">
+                    <h2 id="email-status-text">--</h2>
+                    <p id="email-confidence" class="stat-label">--</p>
+                </div>
+            </div>
+
+            <div id="email-reasons-list" class="reasons-container hidden">
+                <h3>Detection Details</h3>
+                <ul id="email-reasons-ul"></ul>
             </div>
         </main>
 

@@ -1,0 +1,4 @@
+backend/final_phishguard_model/
+__pycache__/
+*.pyc
+.venv/
