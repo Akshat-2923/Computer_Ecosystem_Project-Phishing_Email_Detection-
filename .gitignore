@@ -1,3 +1,4 @@
+backend/final_phishguard_model/model.safetensors
 __pycache__/
 *.pyc
 .venv/
