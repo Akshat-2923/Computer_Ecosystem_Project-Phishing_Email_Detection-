@@ -1,48 +1,55 @@
+// background.js — Phishing ONE v2.0
 
-// background.js for Phishing ONE
+const DEFAULT_ENDPOINT = "http://localhost:5000/api/check_url";
 
-const API_ENDPOINT = "http://localhost:5000/api/check_url";
+// On install, set the default endpoint if not already saved
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.storage.local.get('apiEndpoint', (data) => {
+        if (!data.apiEndpoint) {
+            chrome.storage.local.set({ apiEndpoint: DEFAULT_ENDPOINT });
+        }
+    });
+});
 
 // Listen for tab updates
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    // Only check when the status is 'complete' and we have a URL
     if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith("http")) {
-        console.log("Checking URL:", tab.url);
         checkUrl(tab.url, tabId);
     }
 });
 
 async function checkUrl(url, tabId) {
+    const { apiEndpoint } = await chrome.storage.local.get('apiEndpoint');
+    const endpoint = apiEndpoint || DEFAULT_ENDPOINT;
+
     try {
-        const response = await fetch(API_ENDPOINT, {
+        const response = await fetch(endpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ url: url })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
         });
 
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
         const result = await response.json();
-        
+
         if (result.is_phishing) {
-            console.warn("WARNING: Phishing detected!", result);
-            
-            // Show notification
             chrome.notifications.create({
                 type: 'basic',
                 iconUrl: 'icons/icon128.png',
                 title: '⚠️ Phishing Warning!',
-                message: `Phishing ONE has detected that ${url} might be a phishing site. Reasons: ${result.reasons.join(', ')}`,
+                message: `Phishing ONE flagged: ${url}\n${result.reasons.slice(0, 2).join(' · ')}`,
                 priority: 2
             });
-
-            // Update icon badge or color (optional)
-            chrome.action.setBadgeText({ text: "!", tabId: tabId });
-            chrome.action.setBadgeBackgroundColor({ color: "#FF0000", tabId: tabId });
+            chrome.action.setBadgeText({ text: "!", tabId });
+            chrome.action.setBadgeBackgroundColor({ color: "#FF0000", tabId });
         } else {
-            chrome.action.setBadgeText({ text: "", tabId: tabId });
+            chrome.action.setBadgeText({ text: "", tabId });
         }
+
     } catch (error) {
-        console.error("Error communicating with backend:", error);
+        console.error("[Phishing ONE] Backend unreachable:", error.message);
+        chrome.action.setBadgeText({ text: "?", tabId });
+        chrome.action.setBadgeBackgroundColor({ color: "#94a3b8", tabId });
     }
 }

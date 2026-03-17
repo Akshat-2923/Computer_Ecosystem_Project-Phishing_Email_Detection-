@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Phishing ONE",
-  "version": "1.0",
+  "version": "2.0",
   "description": "Real-time phishing detection for safer browsing.",
   "permissions": [
     "tabs",
@@ -11,8 +11,7 @@
   ],
   "host_permissions": [
     "http://*/*",
-    "https://*/*",
-    "http://localhost:5000/*"
+    "https://*/*"
   ],
   "action": {
     "default_popup": "popup.html"

@@ -14,16 +14,21 @@
                 <span class="shield-icon">🛡️</span>
                 <h1>Phishing <span class="accent">ONE</span></h1>
             </div>
+            <button id="settings-btn" class="icon-btn" title="Backend Settings">⚙️</button>
         </header>
 
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab-btn active" id="tab-url">URL Check</button>
-            <button class="tab-btn" id="tab-email">Email Check</button>
+        <!-- Settings Panel -->
+        <div id="settings-panel" class="settings-panel hidden">
+            <p class="settings-title">Backend Endpoint</p>
+            <input id="endpoint-input" type="text" placeholder="http://localhost:5000/api/check_url" />
+            <div class="settings-actions">
+                <button id="test-connection" class="btn-secondary">Test</button>
+                <button id="save-endpoint" class="btn-primary">Save</button>
+            </div>
+            <span id="settings-status"></span>
         </div>
 
-        <!-- URL Tab -->
-        <main id="panel-url">
+        <main>
             <div id="status-card" class="status-card loading">
                 <div class="status-icon">
                     <div class="spinner"></div>
@@ -51,37 +56,17 @@
             </div>
         </main>
 
-        <!-- Email Tab -->
-        <main id="panel-email" class="hidden">
-            <div class="email-input-area">
-                <textarea id="email-input" placeholder="Paste email or SMS text here to scan for phishing..."></textarea>
-                <button id="scan-btn">🔍 Scan</button>
-            </div>
-
-            <div id="email-status-card" class="status-card hidden">
-                <div class="status-icon">
-                    <span id="email-status-icon">🛡️</span>
-                </div>
-                <div class="status-info">
-                    <h2 id="email-status-text">--</h2>
-                    <p id="email-confidence" class="stat-label">--</p>
-                </div>
-            </div>
-
-            <div id="email-reasons-list" class="reasons-container hidden">
-                <h3>Detection Details</h3>
-                <ul id="email-reasons-ul"></ul>
-            </div>
-        </main>
-
         <footer>
             <p>Real-time AI Shield Active</p>
-            <div class="toggle-container">
-                <small>Protection</small>
-                <label class="switch">
-                    <input type="checkbox" checked disabled>
-                    <span class="slider round"></span>
-                </label>
+            <div class="footer-right">
+                <span id="engine-badge" class="engine-badge" style="display:none"></span>
+                <div class="toggle-container">
+                    <small>Protection</small>
+                    <label class="switch">
+                        <input type="checkbox" checked disabled>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
             </div>
         </footer>
     </div>

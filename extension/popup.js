@@ -1,167 +1,163 @@
-// popup.js for Phishing ONE
+// popup.js — Phishing ONE v2.0
 
-const API_URL_ENDPOINT     = "http://localhost:5000/api/check_url";
-const API_MESSAGE_ENDPOINT = "http://localhost:5000/api/check_message";
+const DEFAULT_ENDPOINT = "http://localhost:5000/api/check_url";
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // ── Tab switching ────────────────────────────────────────────────────────
-    const tabUrl   = document.getElementById('tab-url');
-    const tabEmail = document.getElementById('tab-email');
-    const panelUrl   = document.getElementById('panel-url');
-    const panelEmail = document.getElementById('panel-email');
+    // ── DOM refs ──────────────────────────────────────────
+    const statusCard   = document.getElementById('status-card');
+    const statusText   = document.getElementById('status-text');
+    const urlText      = document.getElementById('url-text');
+    const riskLevel    = document.getElementById('risk-level');
+    const riskScore    = document.getElementById('risk-score');
+    const reasonsList  = document.getElementById('reasons-list');
+    const reasonsUl    = document.getElementById('reasons-ul');
+    const engineBadge  = document.getElementById('engine-badge');
 
-    tabUrl.addEventListener('click', () => {
-        tabUrl.classList.add('active');
-        tabEmail.classList.remove('active');
-        panelUrl.classList.remove('hidden');
-        panelEmail.classList.add('hidden');
+    // Settings panel
+    const settingsBtn   = document.getElementById('settings-btn');
+    const settingsPanel = document.getElementById('settings-panel');
+    const endpointInput = document.getElementById('endpoint-input');
+    const saveBtn       = document.getElementById('save-endpoint');
+    const statusMsg     = document.getElementById('settings-status');
+    const testBtn       = document.getElementById('test-connection');
+
+    // ── Load saved endpoint ───────────────────────────────
+    const { apiEndpoint } = await chrome.storage.local.get('apiEndpoint');
+    const endpoint = apiEndpoint || DEFAULT_ENDPOINT;
+    endpointInput.value = endpoint;
+
+    // ── Settings toggle ───────────────────────────────────
+    settingsBtn.addEventListener('click', () => {
+        settingsPanel.classList.toggle('hidden');
     });
 
-    tabEmail.addEventListener('click', () => {
-        tabEmail.classList.add('active');
-        tabUrl.classList.remove('active');
-        panelEmail.classList.remove('hidden');
-        panelUrl.classList.add('hidden');
+    saveBtn.addEventListener('click', async () => {
+        const val = endpointInput.value.trim();
+        if (!val) return;
+        await chrome.storage.local.set({ apiEndpoint: val });
+        statusMsg.textContent = "Saved!";
+        statusMsg.style.color = "#10b981";
+        setTimeout(() => { statusMsg.textContent = ""; }, 2000);
     });
 
-    // ── URL Tab ──────────────────────────────────────────────────────────────
-    const statusCard  = document.getElementById('status-card');
-    const statusText  = document.getElementById('status-text');
-    const urlText     = document.getElementById('url-text');
-    const riskLevel   = document.getElementById('risk-level');
-    const riskScore   = document.getElementById('risk-score');
-    const reasonsList = document.getElementById('reasons-list');
-    const reasonsUl   = document.getElementById('reasons-ul');
+    testBtn.addEventListener('click', async () => {
+        const val = endpointInput.value.trim();
+        statusMsg.textContent = "Testing...";
+        statusMsg.style.color = "#94a3b8";
+        try {
+            const healthUrl = val.replace('/api/check_url', '/health');
+            const res = await fetch(healthUrl, { method: 'GET' });
+            if (res.ok) {
+                const data = await res.json();
+                const modelInfo = data.model_loaded
+                    ? `✓ Connected — ${data.device || 'cpu'}`
+                    : `✓ Connected (heuristic mode)`;
+                statusMsg.textContent = modelInfo;
+                statusMsg.style.color = "#10b981";
+            } else {
+                statusMsg.textContent = `✗ HTTP ${res.status}`;
+                statusMsg.style.color = "#ef4444";
+            }
+        } catch {
+            statusMsg.textContent = "✗ Unreachable — is Flask running?";
+            statusMsg.style.color = "#ef4444";
+        }
+    });
 
+    // ── Main scan ─────────────────────────────────────────
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    if (tab && tab.url) {
-        urlText.textContent = tab.url;
-        if (tab.url.startsWith("http")) {
-            checkUrl(tab.url);
-        } else {
-            setSafeState("N/A", "--", "Internal Page");
-        }
-    } else {
-        statusText.textContent = "Error";
-        urlText.textContent = "Could not identify tab.";
+    if (!tab || !tab.url) {
+        setErrorState("Could not read tab URL.");
+        return;
     }
 
-    async function checkUrl(url) {
+    urlText.textContent = tab.url;
+
+    if (!tab.url.startsWith("http")) {
+        setNeutralState("Internal Page", "--", "N/A");
+        return;
+    }
+
+    await checkUrl(tab.url, endpoint);
+
+    // ── Functions ─────────────────────────────────────────
+    async function checkUrl(url, ep) {
         try {
-            const response = await fetch(API_URL_ENDPOINT, {
+            const response = await fetch(ep, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url })
             });
-            if (!response.ok) throw new Error("Backend unreachable");
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
             const result = await response.json();
-            updateUrlUI(result);
-        } catch (error) {
-            console.error(error);
-            setSafeState("Error", "!!", "Backend Offline");
+            updateUI(result);
+
+        } catch (err) {
+            setErrorState("Backend offline — start Flask and check ⚙️ settings.");
         }
     }
 
-    function updateUrlUI(result) {
+    function updateUI(result) {
         statusCard.classList.remove('loading');
+
+        // Engine badge — shows "XLM-RoBERTa" or "Heuristic"
+        if (engineBadge) {
+            if (result.model_used === 'xlm-roberta') {
+                const conf = result.confidence ? ` ${result.confidence}%` : '';
+                engineBadge.textContent = `XLM-RoBERTa${conf}`;
+                engineBadge.style.display = 'inline-block';
+            } else if (result.model_used === 'heuristic') {
+                engineBadge.textContent = 'Heuristic';
+                engineBadge.style.display = 'inline-block';
+            }
+        }
+
         if (result.is_phishing) {
             statusCard.classList.add('danger');
+            statusCard.classList.remove('safe');
             statusText.textContent = "Suspicious Site";
-            riskLevel.textContent = "High Risk";
-            riskLevel.style.color = "#ef4444";
-            riskScore.textContent = result.risk_score;
-            reasonsList.classList.remove('hidden');
-            reasonsUl.innerHTML = '';
-            result.reasons.forEach(reason => {
-                const li = document.createElement('li');
-                li.textContent = reason;
-                reasonsUl.appendChild(li);
-            });
+            riskLevel.textContent  = "High Risk";
+            riskLevel.style.color  = "#ef4444";
+            riskScore.textContent  = result.risk_score;
+
+            if (result.reasons && result.reasons.length > 0) {
+                reasonsList.classList.remove('hidden');
+                reasonsUl.innerHTML = '';
+                result.reasons.forEach(reason => {
+                    const li = document.createElement('li');
+                    li.textContent = reason;
+                    reasonsUl.appendChild(li);
+                });
+            }
         } else {
             statusCard.classList.add('safe');
+            statusCard.classList.remove('danger');
             statusText.textContent = "Verified Safe";
-            riskLevel.textContent = "Secure";
-            riskLevel.style.color = "#10b981";
-            riskScore.textContent = result.risk_score ?? 0;
+            riskLevel.textContent  = "Secure";
+            riskLevel.style.color  = "#10b981";
+            riskScore.textContent  = result.risk_score;
+            reasonsList.classList.add('hidden');
         }
     }
 
-    function setSafeState(status, score, level) {
-        statusCard.classList.remove('loading');
+    function setNeutralState(status, score, level) {
+        statusCard.classList.remove('loading', 'danger', 'safe');
         statusText.textContent = status;
-        riskScore.textContent = score;
-        riskLevel.textContent = level;
+        riskScore.textContent  = score;
+        riskLevel.textContent  = level;
     }
 
-    // ── Email Tab ────────────────────────────────────────────────────────────
-    const scanBtn          = document.getElementById('scan-btn');
-    const emailInput       = document.getElementById('email-input');
-    const emailStatusCard  = document.getElementById('email-status-card');
-    const emailStatusIcon  = document.getElementById('email-status-icon');
-    const emailStatusText  = document.getElementById('email-status-text');
-    const emailConfidence  = document.getElementById('email-confidence');
-    const emailReasonsList = document.getElementById('email-reasons-list');
-    const emailReasonsUl   = document.getElementById('email-reasons-ul');
-
-    scanBtn.addEventListener('click', async () => {
-        const text = emailInput.value.trim();
-        if (!text) return;
-
-        // Loading state
-        scanBtn.disabled = true;
-        scanBtn.textContent = "Scanning...";
-        emailStatusCard.classList.add('hidden');
-        emailReasonsList.classList.add('hidden');
-
-        try {
-            const response = await fetch(API_MESSAGE_ENDPOINT, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text })
-            });
-            if (!response.ok) throw new Error("Backend unreachable");
-            const result = await response.json();
-            updateEmailUI(result);
-        } catch (error) {
-            console.error(error);
-            emailStatusCard.classList.remove('hidden');
-            emailStatusIcon.textContent = "⚠️";
-            emailStatusText.textContent = "Backend Offline";
-            emailConfidence.textContent = "Make sure app.py is running";
-        } finally {
-            scanBtn.disabled = false;
-            scanBtn.textContent = "🔍 Scan";
-        }
-    });
-
-    function updateEmailUI(result) {
-        emailStatusCard.classList.remove('hidden', 'safe', 'danger');
-
-        if (result.is_phishing) {
-            emailStatusCard.classList.add('danger');
-            emailStatusIcon.textContent = "🚨";
-            emailStatusText.textContent = "Phishing Detected";
-            emailConfidence.textContent = result.confidence
-                ? `${result.confidence}% confidence`
-                : "High risk";
-
-            emailReasonsList.classList.remove('hidden');
-            emailReasonsUl.innerHTML = '';
-            result.reasons.forEach(reason => {
-                const li = document.createElement('li');
-                li.textContent = reason;
-                emailReasonsUl.appendChild(li);
-            });
-        } else {
-            emailStatusCard.classList.add('safe');
-            emailStatusIcon.textContent = "✅";
-            emailStatusText.textContent = "Looks Safe";
-            emailConfidence.textContent = result.confidence
-                ? `${result.confidence}% confidence`
-                : "Low risk";
-            emailReasonsList.classList.add('hidden');
-        }
+    function setErrorState(msg) {
+        statusCard.classList.remove('loading', 'safe');
+        statusCard.classList.add('danger');
+        statusText.textContent = "Error";
+        riskLevel.textContent  = "Offline";
+        riskLevel.style.color  = "#ef4444";
+        riskScore.textContent  = "!";
+        urlText.textContent    = msg;
     }
 });
