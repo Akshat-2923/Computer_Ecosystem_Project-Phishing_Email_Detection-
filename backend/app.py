@@ -22,6 +22,59 @@ logger = logging.getLogger(__name__)
 #   export MODEL_PATH=/path/to/final_phishguard_model
 MODEL_PATH = os.environ.get("MODEL_PATH", "./final_phishguard_model")
 
+# ---------------------------------------------------------------------------
+# Trusted domain whitelist
+# URLs whose registered domain exactly matches one of these are always SAFE.
+# The model is NOT called for these — prevents false positives on popular sites.
+# Add more entries as needed.
+# ---------------------------------------------------------------------------
+TRUSTED_DOMAINS = {
+    # Google
+    "google.com", "youtube.com", "gmail.com", "googleapis.com",
+    "googleusercontent.com", "gstatic.com", "google.co.in",
+    # Microsoft
+    "microsoft.com", "live.com", "outlook.com", "office.com",
+    "office365.com", "microsoftonline.com", "bing.com",
+    # Apple
+    "apple.com", "icloud.com",
+    # Meta
+    "facebook.com", "instagram.com", "whatsapp.com", "meta.com",
+    # Amazon / AWS
+    "amazon.com", "amazon.in", "amazonaws.com", "aws.amazon.com",
+    # Indian banks & payments
+    "sbi.co.in", "onlinesbi.sbi", "hdfcbank.com", "icicibank.com",
+    "axisbank.com", "paytm.com", "phonepe.com", "razorpay.com",
+    "npci.org.in", "upi.org",
+    # Developer / education
+    "github.com", "stackoverflow.com", "wikipedia.org",
+    "reddit.com", "twitter.com", "x.com", "linkedin.com",
+    "netflix.com", "spotify.com", "discord.com",
+    # Indian govt / telecom
+    "gov.in", "nic.in", "irctc.co.in",
+}
+
+# Minimum confidence required to flag a URL as phishing.
+# Model must be at least this confident — reduces false positives.
+PHISHING_CONFIDENCE_THRESHOLD = 0.80   # 80 %
+
+
+def _registered_domain(url: str) -> str:
+    """
+    Return the registered domain (last two labels) of a URL's hostname.
+    e.g.  https://www.youtube.com/watch  →  youtube.com
+    """
+    try:
+        host = urlparse(url).netloc.lower().split(':')[0]  # strip port
+        host = host.lstrip('www.')
+        parts = host.split('.')
+        # Handle two-part ccTLDs like co.in, co.uk, org.in
+        two_part_tlds = {'co.in', 'co.uk', 'org.in', 'net.in', 'gov.in', 'ac.in'}
+        if len(parts) >= 3 and '.'.join(parts[-2:]) in two_part_tlds:
+            return '.'.join(parts[-3:])
+        return '.'.join(parts[-2:]) if len(parts) >= 2 else host
+    except Exception:
+        return ""
+
 tokenizer = None
 model = None
 device = None
@@ -182,15 +235,34 @@ def analyze_text(text: str, is_url: bool = False):
         "reasons": [],
     }
 
+    # --- Whitelist check (runs before model — instant SAFE for trusted domains) ---
+    if is_url:
+        reg_domain = _registered_domain(text)
+        if reg_domain in TRUSTED_DOMAINS:
+            result["model_used"] = "whitelist"
+            result["result"] = "SAFE"
+            result["is_phishing"] = False
+            result["risk_score"] = 0.0
+            result["reasons"] = [f"Domain '{reg_domain}' is on the trusted whitelist."]
+            return result
+
     # --- ML inference (primary signal) ---
     if model_loaded:
         try:
             label, confidence = predict_with_model(text)
             result["model_used"] = "xlm-roberta"
-            result["result"] = label
-            result["is_phishing"] = label == "PHISHING"
             result["confidence"] = round(confidence * 100, 2)
-            result["risk_score"] = round(confidence * 10, 1) if label == "PHISHING" else round((1 - confidence) * 10, 1)
+
+            # Only flag as phishing if confidence exceeds the threshold
+            if label == "PHISHING" and confidence >= PHISHING_CONFIDENCE_THRESHOLD:
+                result["result"] = "PHISHING"
+                result["is_phishing"] = True
+                result["risk_score"] = round(confidence * 10, 1)
+            else:
+                result["result"] = "SAFE"
+                result["is_phishing"] = False
+                result["risk_score"] = round((1 - confidence) * 10, 1) if label == "SAFE" else round(confidence * 5, 1)
+
             result["reasons"].append(
                 f"XLM-RoBERTa model classified this as {label} "
                 f"with {result['confidence']}% confidence."

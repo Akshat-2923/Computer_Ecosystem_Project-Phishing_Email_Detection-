@@ -1,9 +1,10 @@
-# Web server
-flask>=2.3.0
-flask-cors>=4.0.0
-
-# ML model — XLM-RoBERTa
-torch>=2.0.0
-transformers>=4.38.0
-sentencepiece>=0.1.99   # required by XLM-RoBERTa tokenizer
-protobuf>=3.20.0        # dependency of sentencepiece
+flask
+flask-cors
+transformers
+torch
+sentencepiece
+protobuf
+scikit-learn
+pandas
+numpy
+joblib
